@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SKLITTER</title>
+  <style>
+    @font-face {
+      font-family: 'Phonk';
+      src: url('font/phonk-regular-demo.otf') format('opentype');
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: black;
+      color: red;
+      font-family: 'Phonk', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .background-image {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url('https://iili.io/31Xmtn9.th.png');
+      background-size: 41%;
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.04;
+      z-index: 0;
+    }
+
+    .container {
+      margin-top: 260px;
+      text-align: center;
+      opacity: 0;
+      animation: fadeIn 3s ease-out forwards;
+      z-index: 1;
+    }
+
+    h1 {
+      font-size: 5rem;
+      margin: 0;
+    }
+
+    h2 {
+      font-size: 1rem;
+      margin: 8px 0 20px 0;
+      letter-spacing: 1px;
+    }
+
+    .search-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .search-bar {
+      padding: 10px;
+      width: 80%;
+      max-width: 500px;
+      background-color: #222;
+      border: 2px solid red;
+      border-radius: 5px;
+      color: white;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .search-bar:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Chat */
+    #chat {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 30px;
+      z-index: 1;
+    }
+
+    #chatTitle {
+      font-size: 5rem;
+      margin-bottom: 20px;
+      color: red;
+    }
+
+    #messages {
+      height: 250px;
+      overflow-y: auto;
+      border: 1px solid red;
+      padding: 10px;
+      width: 90%;
+      max-width: 500px;
+      background-color: #111;
+      color: white;
+      margin-bottom: 10px;
+      font-family: sans-serif;
+      font-size: 0.9rem;
+    }
+
+    #messageInput {
+      width: 90%;
+      max-width: 500px;
+      padding: 10px;
+      border: 2px solid red;
+      background-color: #222;
+      color: white;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+  </style>
+</head>
+<body>
+  <div class="background-image"></div>
+
+  <!-- Home iniziale -->
+  <div class="container" id="initialScreen">
+    <h1>SKLITTER</h1>
+    <h2>THE NEW GENERATION</h2>
+    <div class="search-container">
+      <input type="text" class="search-bar" placeholder="Search..." id="keywordInput" />
+    </div>
+  </div>
+
+  <!-- Chat nascosta -->
+  <div id="chat">
+    <div id="chatTitle">SKLITTER CHAT</div>
+    <div id="messages"></div>
+    <input id="messageInput" autocomplete="off" placeholder="Scrivi un messaggio..." />
+  </div>
+
+  <!-- Socket.io -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const keywordInput = document.getElementById('keywordInput');
+    const initialScreen = document.getElementById('initialScreen');
+    const chat = document.getElementById('chat');
+    const messages = document.getElementById('messages');
+    const messageInput = document.getElementById('messageInput');
+    let chatEnabled = false;
+    let userId = null;
+    let userColor = null;
+
+    // Funzione per generare un colore casuale
+    function getRandomColor() {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    }
+
+    keywordInput.addEventListener('input', function () {
+      const val = this.value.trim().toUpperCase();
+      if (val === 'TANADELLUPO' && !chatEnabled) {
+        chatEnabled = true;
+        initialScreen.style.display = 'none';
+        chat.style.display = 'flex';
+        keywordInput.disabled = true;
+
+        // Genera un ID utente casuale e un colore
+        userId = Math.floor(Math.random() * 1000) + 1;  // Genera un numero casuale
+        userColor = getRandomColor();
+
+        // Invia l'ID e il colore al server
+        socket.emit('join', { userId, userColor });
+      }
+    });
+
+    messageInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && this.value.trim() !== '') {
+        const message = {
+          userId,
+          userColor,
+          text: this.value
+        };
+        socket.emit('chat message', message);
+        this.value = '';
+      }
+    });
+
+    socket.on('chat message', function (data) {
+      const msg = document.createElement('div');
+      msg.style.color = data.userColor;
+      msg.textContent = `User ${data.userId}: ${data.text}`;
+      messages.appendChild(msg);
+      messages.scrollTop = messages.scrollHeight;
+    });
+
+    socket.on('connect', () => {
+      console.log("Socket connesso");
+    });
+  </script>
+</body>
+</html>
